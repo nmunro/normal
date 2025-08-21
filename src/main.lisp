@@ -8,48 +8,44 @@
   ()
   (:documentation "Base class for all models"))
 
-(defmacro defmodel (name supers slots &key (managers '(objects)))
-  "Define a model with NAME, SUPERS, and SLOTS.
-   Also defines default manager functions like NAME-OBJECTS."
-  (let* ((class-name name)
-         (default-supers (if (null supers) '(base-model) supers))
-         (manager-symbols (mapcar (lambda (m) (intern (format nil "~A-~A" name m))) managers)))
+(defmacro defmodel (name supers &rest slots)
+  (let* ((managers-sym (intern (format nil "~A--MANAGERS" name)))
+         (default-mgr-sym (intern (format nil "~A-OBJECTS" name))))
     `(progn
-       ;; Define the class
-       (defclass ,class-name ,default-supers ,slots)
+       ;; define the model
+       (defclass ,name ,(if supers supers '(base-model)) ,slots)
 
-       ;; Define default manager(s)
-       ,@(mapcar (lambda (mgr)
-                   `(defun ,mgr ()
-                      (format t "Called manager ~A for class ~A~%"
-                              ',mgr ',class-name)))
-                 manager-symbols)
+       ;; define a registry of managers
+       (defparameter ,managers-sym (make-hash-table))
 
-       ;; Define dispatcher (keyword API)
-       (defun ,class-name (keyword &rest args)
-         (ecase keyword
-           (:create
-            (apply #'make-instance ',class-name args))
+       ;; define default manager
+       (defun ,default-mgr-sym (&rest args)
+         (apply #'some-default-manager-fn ',name args))
 
-           (:all
-            (funcall ,(car manager-symbols)))
+       ;; register default manager
+       (setf (gethash :default ,managers-sym) #',default-mgr-sym)
 
-           ;; extendable dispatch
-           (otherwise
-            (error "Unknown keyword ~S for model ~S"
-                   keyword ',class-name)))))))
+       ;; "simple-name" dispatch → defaults to user-objects
+       (defun ,name (op &rest args &key (using :default))
+         (declare (ignore using))
+         (apply (gethash using ,managers-sym) op args)))))
 
 ;;; Example usage
 (defmodel user ()
   ((name :accessor name :initarg :name)
-   (age  :accessor age  :initarg :age))
-  :managers (objects admin-objects))
+   (age  :accessor age  :initarg :age)))
+
+(user :create :name "Alice")     ; expands to user-objects
+(user :all)                      ; same
+(user :all :using :admin)        ; will use user-admin-objects if defined
 
 ;; Create instance
-(let ((u (user :create :name "Fred" :age 27)))
-  (format t "Name: ~A, Age: ~A~%" (name u) (age u)))
+;; (let ((u (user :create :name "Fred" :age 27)))
+;;   (format t "Name: ~A, Age: ~A~%" (name u) (age u))) ;; @NOTE: This doesn't work yet because instances aren't ACTUALLY being created (yet)
 
 ;; Manager call
 (user :all)        ;; => calls user-objects
+(user-objects :all)        ;; => calls user-objects
+(user-admin-objects :all)        ;; => calls user-objects
 ;; (user-objects)     ;; => also directly accessible
 ;; (user-admin-objects) ;; => developer-defined alt manager
