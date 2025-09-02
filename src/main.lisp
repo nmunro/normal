@@ -13,6 +13,9 @@
   ()
   (:documentation "Base class for all managers"))
 
+(defun manage (model &key with)
+  (format t "Managing ~A with ~A~%" model with))
+
 (defgeneric create-object (manager)
   (:documentation "Create object"))
 
@@ -36,11 +39,19 @@
      ()))
 
 (defmacro defmodel (name supers &rest slots)
-  `(defclass ,name ,supers
-     ,@slots))
+    (let* ((pkg (or *package* (find-package :cl-user)))
+           (manager-name (intern (string-upcase (format nil "~A-OBJECTS" name)) pkg)))
+        `(progn
+            (defclass ,manager-name (base-manager)
+                ())
 
-(defun manage (model &key with)
-  (format t "Managing ~A with ~A~%" model with))
+            (defun ,name (&rest rest)
+              (format nil "~A" rest))
+
+            (defclass ,name ,supers
+                ,@slots)
+
+            (manage ',name :with ',manager-name))))
 
 (macroexpand-1 '(defmodel user (base-model)
                ((name :accessor name :initarg :name)
@@ -58,8 +69,9 @@
 ;;   ((name :accessor name :initarg :name)
 ;;    (age  :accessor age  :initarg :age)))
 
-;; (user :create :name "Alice")     ; expands to user-objects
-;; (user :all)                      ; same
+(user :create :name "Alice" :age 23)     ; expands to user-objects
+(user :all)                      ; same
+(user :filter (:and (:> :age 18) (:<= :age 65)))
 ;; (user :using :admin :all)        ; will use user-admin-objects if defined
 
 ;; Create instance
