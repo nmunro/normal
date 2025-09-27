@@ -1,7 +1,19 @@
-(defpackage normal
-  (:use :cl))
+(defpackage :normal
+  (:use :cl)
+  (:export #:defmodel
+           #:base-model
+           #:created-at
+           #:updated-at
+           #:pk
+           #:create-normal-object
+           #:get-normal-object
+           #:all-normal-objects
+           #:no-normal-objects
+           #:filter-normal-objects
+           #:delete-normal-object
+           #:bulk-delete-normal-objects))
 
-(in-package normal)
+(in-package :normal)
 
 (defclass base-model ()
   ((pk         :initform 0   :accessor pk)
@@ -9,81 +21,63 @@
    (updated-at :initform nil :accessor updated-at))
   (:documentation "Base class for all models"))
 
-(defclass base-manager ()
-  ()
-  (:documentation "Base class for all managers"))
+;; generic functions operate on model instances/classes directly
+(defgeneric create-normal-object (class &rest initargs)
+  (:documentation "Create an instance of CLASS with INITARGS."))
 
-(defun manage (model &key with)
-  (format t "Managing ~A with ~A~%" model with))
+(defgeneric get-normal-object (class)
+  (:documentation "Get a single object."))
 
-(defgeneric create-norma-object (manager)
-  (:documentation "Create object"))
+(defgeneric all-normal-objects (class)
+  (:documentation "All objects."))
 
-(defgeneric all-normal-objects (manager)
-  (:documentation "All objects"))
+(defgeneric no-normal-objects (class)
+  (:documentation "Return NIL to represent no objects."))
 
-(defgeneric no-normal-objects (manager)
-  (:documentation "A helper method to return a usable, but empty object"))
+(defgeneric filter-normal-objects (class &rest conditions)
+  (:documentation "Filter objects."))
 
-(defgeneric filter-normal-objects (manager)
-  (:documentation "Filter objects"))
+(defgeneric delete-normal-object (obj)
+  (:documentation "Delete object."))
 
-(defgeneric delete-normal-object (manager)
-  (:documentation "Delete object"))
-
-(defgeneric delete-normal-objects (manager)
-  (:documentation "Delete objects"))
-
-(defmacro defmanager (name)
-  `(defclass ,name (base-manager)
-     ()))
+(defgeneric bulk-delete-normal-objects (class &rest conditions)
+  (:documentation "Delete objects."))
 
 (defmacro defmodel (name supers &rest slots)
-    (let* ((pkg (or *package* (find-package :cl-user)))
-           (manager-name (intern (string-upcase (format nil "~A-OBJECTS" name)) pkg)))
-        `(progn
-            (defclass ,manager-name (base-manager) ())
+  `(progn
+     (defclass ,name ,supers
+       ,@slots)
 
-            (defun ,name (&rest rest)
-              (format nil "~A" rest))
+     ;; default methods for this model
+     (defmethod create-normal-object ((class (eql ',name)) &rest initargs)
+       (apply #'make-instance class initargs))
 
-            (defclass ,name ,supers
-                ,@slots)
+     (defmethod get-normal-object ((class (eql ',name)))
+       (format nil "Get NORMAL: '~A'~%" class))
 
-            (defmethod no-normal-objects ((manager ,name))
-              (format nil "none"))
+     (defmethod all-normal-objects ((class (eql ',name)))
+       (format nil "All NORMAL: '~A'~%" class))
 
-            (manage ',name :with ',manager-name))))
+     (defmethod no-normal-objects ((class (eql ',name)))
+       nil)
 
-(macroexpand-1 '(defmodel user (base-model)
-               ((name :accessor name :initarg :name)
-                (age :accessor age :initarg arg))))
+     (defmethod filter-normal-objects ((class (eql ',name)) &rest conditions)
+       (format nil "Filter NORMAL: '~A' with ~A" class conditions))
 
-;;; Example usage
-(defmodel user (base-model)
-    ((name :accessor name :initarg :name)
-     (age :accessor age :initarg :age)))
+     (defmethod delete-normal-object ((obj ,name))
+       (format nil "Delete single NORMAL instance of ~A" ',name))
 
-(let ((u (make-instance 'user :name "Bob" :age 24)))
-  (created-at u))
+     (defmethod bulk-delete-normal-objects ((class (eql ',name)) &rest conditions)
+       (format nil "Delete many NORMAL: '~A' with ~A" class conditions))
 
-(let ((user (make-instance 'user :name "Fred" :age 23)))
-  (no-normal-objects user))
-
-(user :create :name "Alice" :age 23)     ; expands to user-objects
-(user :all)                      ; same
-;; (user :filter (:and (:> :age 18) (:<= :age 65)))
-;; (user :using :admin :all)        ; will use user-admin-objects if defined
-
-;; Create instance
-;; (let ((u (user :create :name "Fred" :age 27)))
-;;   (format t "Name: ~A, Age: ~A~%" (name u) (age u))) ;; @NOTE: This doesn't work yet because instances aren't ACTUALLY being created (yet)
-
-;; Manager call
-;; (user :all)        ;; => calls user-objects
-;; (user-objects :all)        ;; => calls user-objects
-;; (user-admin-objects :all)        ;; => calls user-objects
-;; (user-objects)     ;; => also directly accessible
-;; (user-admin-objects) ;; => developer-defined alt manager
-
-(manage :user :with :user-admin)
+     ;; dispatcher function
+     (defun ,name (&rest args)
+       (destructuring-bind (op &rest params) args
+         (ecase op
+           (:create (apply #'create-normal-object ',name params))
+           (:get    (get-normal-object ',name))
+           (:all    (all-normal-objects ',name))
+           (:none   (no-normal-objects ',name))
+           (:filter (apply #'filter-normal-objects ',name params))
+           (:delete (apply #'delete-normal-object params))
+           (:bulk-delete (apply #'bulk-delete-normal-objects ',name params)))))))
