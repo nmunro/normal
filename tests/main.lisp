@@ -10,9 +10,6 @@
     ((name :accessor name :initarg :name)
      (age :accessor age :initarg :age)))
 
-;; (user :all)                      ; same
-;; (user :filter (:and (:> :age 18) (:<= :age 65)))
-
 (deftest test-target-1
   (testing "should (= 1 1) to be true"
   (format t "Testing~%")
