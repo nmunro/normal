@@ -2,7 +2,8 @@
   :version "0.0.1"
   :author "nmunro"
   :license "BSD3-Clause"
-  :depends-on ()
+  :depends-on (:closer-mop
+               :local-time)
   :components ((:module "src"
                 :components
                 ((:file "main"))))
