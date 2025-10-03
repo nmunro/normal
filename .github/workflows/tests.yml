@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
   pull_request:
 
 jobs:
@@ -10,21 +10,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-      - name: Setup SBCL with Quicklisp
-        uses: 40ants/setup-lisp@v2
-        with:
-          lisp: sbcl-bin
+      - name: Install SBCL
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sbcl
 
-      - name: Cache Quicklisp
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/common-lisp
-          key: ${{ runner.os }}-quicklisp-${{ hashFiles('**/*.asd') }}
-          restore-keys: |
-            ${{ runner.os }}-quicklisp-
+      - name: Install Quicklisp
+        run: |
+          curl -O https://beta.quicklisp.org/quicklisp.lisp
+          sbcl --non-interactive \
+               --load quicklisp.lisp \
+               --eval "(quicklisp-quickstart:install)" \
+               --eval "(ql:add-to-init-file)" \
+               --quit
 
       - name: Run tests
         run: |
@@ -32,3 +32,12 @@ jobs:
                --eval "(require :asdf)" \
                --eval "(asdf:test-system :normal)" \
                --quit
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: lisp-test-report
+          path: |
+            **/normal/tests/**/*.fasl
+            **/normal/tests/**/*.lisp
