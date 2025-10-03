@@ -2,7 +2,6 @@ name: CI
 
 on:
   push:
-    branches: [ "main" ]
   pull_request:
 
 jobs:
@@ -20,22 +19,21 @@ jobs:
           curl -O https://beta.quicklisp.org/quicklisp.lisp
           sbcl --non-interactive \
                --load quicklisp.lisp \
-               --eval '(quicklisp-quickstart:install :path "~/.quicklisp")' \
+               --eval '(quicklisp-quickstart:install)' \
                --quit
-          echo '(load (merge-pathnames "setup.lisp" (user-homedir-pathname ".quicklisp/")))' >> ~/.sbclrc
 
-      - name: Link project into Quicklisp local-projects
+      - name: Symlink project into Quicklisp local-projects
         run: |
-          mkdir -p ~/.quicklisp/local-projects
-          ln -s $GITHUB_WORKSPACE ~/.quicklisp/local-projects/normal
+          mkdir -p ~/quicklisp/local-projects
+          ln -s $GITHUB_WORKSPACE ~/quicklisp/local-projects/normal
 
       - name: Run tests
         run: |
           sbcl --non-interactive \
-               --eval "(require :asdf)" \
+               --load ~/quicklisp/setup.lisp \
                --eval "(ql:quickload :normal)" \
                --eval "(asdf:test-system :normal)" \
-               --quit | tee test-report.txt
+               --quit > test-report.txt 2>&1
 
       - name: Upload test report
         uses: actions/upload-artifact@v4
