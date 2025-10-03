@@ -10,12 +10,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install SBCL
         run: |
           sudo apt-get update
-          sudo apt-get install -y sbcl
+          sudo apt-get install -y sbcl curl
 
       - name: Install Quicklisp
         run: |
@@ -31,13 +31,11 @@ jobs:
           sbcl --non-interactive \
                --eval "(require :asdf)" \
                --eval "(asdf:test-system :normal)" \
-               --quit
+               --quit | tee test-report.txt
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: lisp-test-report
-          path: |
-            **/normal/tests/**/*.fasl
-            **/normal/tests/**/*.lisp
+          path: test-report.txt
