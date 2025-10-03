@@ -45,3 +45,12 @@
       (ok (= (pk u) 0))
       (ok (eq (created-at u) nil))
       (ok (eq (updated-at u) nil)))))
+
+
+(deftest test-connection
+  (testing "Testing connection"
+  (dbi:with-connection (conn :sqlite3 :database-name (asdf:system-relative-pathname :normal "test.db"))
+    (let* ((query (dbi:prepare conn "SELECT 1+1 AS test"))
+           (query (dbi:execute query)))
+      (let ((rows (loop :for row = (dbi:fetch query) :while row :collect row)))
+        (ok (= (length rows) 1)))))))

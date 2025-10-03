@@ -3,6 +3,7 @@
   :author "nmunro"
   :license "BSD3-Clause"
   :depends-on (:closer-mop
+               :cl-dbi
                :local-time)
   :components ((:module "src"
                 :components
