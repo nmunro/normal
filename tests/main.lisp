@@ -20,9 +20,20 @@
 
 (deftest test-class-properties
   (testing "Smoke test for class properties")
-  (let ((cls (find-class 'user)))
-    (ok (equal (list 'PK 'CREATED-AT 'UPDATED-AT 'NAME 'AGE) (mapcar #'closer-mop:slot-definition-name (closer-mop:class-slots cls))))
-    (ok (equal (closer-mop:slot-definition-type PK) integer))))
+  (let* ((cls (find-class 'user))
+         (slots (closer-mop:class-slots cls))
+         (slot-names (mapcar #'closer-mop:slot-definition-name slots)))
+    (ok (equal (list 'PK 'CREATED-AT 'UPDATED-AT 'NAME 'AGE) slot-names))
+    (let ((pk-slot (find 'pk slots :key #'closer-mop:slot-definition-name))
+          (created-at-slot (find 'created-at slots :key #'closer-mop:slot-definition-name))
+          (updated-at-slot (find 'updated-at slots :key #'closer-mop:slot-definition-name))
+          (name-slot (find 'name slots :key #'closer-mop:slot-definition-name))
+          (age-slot (find 'age slots :key #'closer-mop:slot-definition-name)))
+      (ok (equal (closer-mop:slot-definition-type pk-slot) 'integer))
+      (ok (equal (closer-mop:slot-definition-type created-at-slot) '(or local-time:timestamp null)))
+      (ok (equal (closer-mop:slot-definition-type updated-at-slot) '(or local-time:timestamp null)))
+      (ok (equal (closer-mop:slot-definition-type name-slot) 'string))
+      (ok (equal (closer-mop:slot-definition-type age-slot) 'integer)))))
 
 
 (deftest test-instance-properties
