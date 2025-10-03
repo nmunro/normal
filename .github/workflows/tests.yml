@@ -28,7 +28,8 @@ jobs:
 
       - name: Run tests
         run: |
-          export ASDF_SOURCE_REGISTRY=$GITHUB_WORKSPACE//
+          mkdir -p ~/quicklisp/local-projects
+          ln -s $GITHUB_WORKSPACE ~/quicklisp/local-projects/normal
           sbcl --non-interactive \
                --eval "(require :asdf)" \
                --eval "(asdf:test-system :normal)" \
