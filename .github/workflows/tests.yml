@@ -23,8 +23,8 @@ jobs:
           sbcl --non-interactive \
                --load quicklisp.lisp \
                --eval "(quicklisp-quickstart:install)" \
-               --eval "(ql:add-to-init-file)" \
                --quit
+          echo "(load (merge-pathnames \"quicklisp/setup.lisp\" (user-homedir-pathname)))" >> ~/.sbclrc
 
       - name: Run tests
         run: |
