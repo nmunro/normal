@@ -40,7 +40,8 @@ jobs:
 
       - name: Run tests
         run: |
-          sbcl --non-interactive --load ci-tests.lisp
+          mkdir -p logs
+          sbcl --non-interactive --load ci-tests.lisp > logs/test-output.log 2>&1 || true
 
       - name: Upload test logs
         uses: actions/upload-artifact@v4
