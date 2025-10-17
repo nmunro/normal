@@ -4,7 +4,8 @@
   :license "BSD3-Clause"
   :depends-on (:closer-mop
                :cl-dbi
-               :local-time)
+               :local-time
+               :sxql)
   :components ((:module "src"
                 :components
                 ((:file "main"))))

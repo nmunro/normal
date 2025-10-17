@@ -23,6 +23,12 @@
    (updated-at :initform nil :accessor updated-at :type (or local-time:timestamp null)))
   (:documentation "Base class for all models"))
 
+(define-condition multiple-objects-returned (error)
+  ((model :initarg :model :initform nil :reader model)))
+
+(define-condition no-objects-returned (error)
+  ((model :initarg :model :initform nil :reader model)))
+
 ;; generic functions operate on model instances/classes directly
 (defgeneric create-migrate-normal-object (class &rest initargs)
   (:documentation "Create a model migrations"))
@@ -33,10 +39,10 @@
 (defgeneric create-normal-object (class &rest initargs)
   (:documentation "Create an instance of CLASS with INITARGS."))
 
-(defgeneric get-normal-object (class)
+(defgeneric get-normal-object (class &rest conditions)
   (:documentation "Get a single object."))
 
-(defgeneric get-or-create-normal-object (class)
+(defgeneric get-or-create-normal-object (class &rest conditions)
   (:documentation "Get/create a single object."))
 
 (defgeneric save-normal-object (class)
@@ -54,7 +60,7 @@
 (defgeneric filter-normal-objects (class &rest conditions)
   (:documentation "Filter objects."))
 
-(defgeneric delete-normal-object (obj)
+(defgeneric delete-normal-object (obj &rest conditions)
   (:documentation "Delete object."))
 
 (defgeneric bulk-delete-normal-objects (class &rest conditions)
@@ -69,20 +75,24 @@
      (defmethod create-normal-object ((class (eql ',name)) &rest initargs)
        (apply #'make-instance class initargs))
 
-     (defmethod get-normal-object ((class (eql ',name)))
-       (format nil "Get NORMAL: '~A'~%" class))
+    (defmethod get-normal-object ((class (eql ',name)) &rest conditions)
+        (let* ((table (string-downcase (symbol-name ',name)))
+               (clauses (loop for (k v) on conditions by #'cddr collect (format nil "~(~a~) = ~a" k v))))
+            (if clauses
+                (format nil "SELECT * FROM ~A WHERE ~{~A~^ AND ~}" table clauses)
+                (format nil "SELECT * FROM ~A" table))))
 
-     (defmethod get-or-create-normal-object ((class (eql ',name)))
-       (format nil "Get/create NORMAL: '~A'~%" class))
+     (defmethod get-or-create-normal-object ((class (eql ',name)) &rest conditions)
+       (format nil "Get/create NORMAL: '~A' (~A)~%" class conditions))
 
      (defmethod all-normal-objects ((class (eql ',name)))
-       (format nil "All NORMAL: '~A'~%" class))
+        (sxql:yield (sxql:select :* (sxql:from ,(intern (symbol-name name) :keyword)))))
 
      (defmethod save-normal-object ((class (eql ',name)))
        (format nil "Save NORMAL: '~A'~%" class))
 
      (defmethod save-normal-objects ((class (eql ',name)))
-       (format nil "Save NORMAL: '~A'~%" class))
+       (format nil "Save many NORMAL: '~A'~%" class))
 
      (defmethod no-normal-objects ((class (eql ',name)))
        nil)
@@ -90,8 +100,8 @@
      (defmethod filter-normal-objects ((class (eql ',name)) &rest conditions)
        (format nil "Filter NORMAL: '~A' with ~A" class conditions))
 
-     (defmethod delete-normal-object ((obj ,name))
-       (format nil "Delete single NORMAL instance of ~A" ',name))
+     (defmethod delete-normal-objects ((class (eql ',name)) &rest conditions)
+       (format nil "Delete single NORMAL instance of ~A (~A)" class conditions))
 
      (defmethod bulk-delete-normal-objects ((class (eql ',name)) &rest conditions)
        (format nil "Delete many NORMAL: '~A' with ~A" class conditions))
@@ -101,8 +111,8 @@
        (destructuring-bind (op &rest params) args
          (ecase op
            (:create        (apply #'create-normal-object ',name params))
-           (:get           (get-normal-object ',name))
-           (:get-or-create (get-normal-object ',name))
+           (:get           (apply #'get-normal-object ',name params))
+           (:get-or-create (apply #'get-normal-object ',name params))
            (:all           (all-normal-objects ',name))
            (:none          (no-normal-objects ',name))
            (:filter        (apply #'filter-normal-objects ',name params))

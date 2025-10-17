@@ -46,6 +46,13 @@
       (ok (eq (created-at u) nil))
       (ok (eq (updated-at u) nil)))))
 
+(deftest test-all
+  (testing "Testing all"
+    (ok (string= (user :all) "SELECT * FROM user"))))
+
+(deftest test-all
+  (testing "Testing get"
+    (ok (string= (user :get :pk 1) "SELECT * FROM user WHERE pk = 1"))))
 
 (deftest test-connection
   (testing "Testing connection"
